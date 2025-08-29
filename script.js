@@ -100,3 +100,242 @@ const emergencyServices = [
         image: "./assets/Bangladesh-Railway.png"
     }
 ];
+
+// Global variables
+let heartCount = 0;
+let coinCount = 100;
+let copyCount = 0;
+let callHistory = [];
+let likedServices = new Set();
+
+// DOM elements
+const heartCountElement = document.getElementById('heartCount');
+const coinCountElement = document.getElementById('coinCount');
+const copyCountElement = document.getElementById('copyCount');
+const cardsContainer = document.getElementById('cardsContainer');
+const historyList = document.getElementById('historyList');
+const clearHistoryBtn = document.getElementById('clearHistoryBtn');
+
+// Initialize the application
+function init() {
+    renderCards();
+    updateCounters();
+    setupEventListeners();
+}
+
+// Render emergency service cards
+function renderCards() {
+    cardsContainer.innerHTML = '';
+    
+    emergencyServices.forEach(service => {
+        const card = createServiceCard(service);
+        cardsContainer.appendChild(card);
+    });
+}
+
+// Create individual service card
+function createServiceCard(service) {
+    const cardDiv = document.createElement('div');
+    cardDiv.className = 'bg-white rounded-xl shadow-lg p-8 card-hover';
+    
+    const isLiked = likedServices.has(service.id);
+    
+    cardDiv.innerHTML = `
+        <div class="flex items-center justify-between mb-4">
+            <div class="p-4 rounded-2xl ${service.bgColor}">
+                <img src="${service.image}" alt="${service.nameBengali}" class="w-10 h-10 object-cover rounded-full">
+            </div>
+            <button class="heart-btn heart-icon ${isLiked ? 'liked' : 'text-gray-400'}" data-service-id="${service.id}">
+                <i class="fas fa-heart text-xl"></i>
+            </button>
+        </div>
+        
+        <div class="mb-4">
+            <h3 class="text-xl font-bold text-gray-800 mb-1">${service.nameBengali}</h3>
+            <p class="text-gray-600">${service.nameEnglish}</p>
+        </div>
+        
+        <div class="mb-4">
+            <div class="text-2xl font-bold text-gray-800 mb-2">${service.number}</div>
+            <span class="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-sm">${service.category}</span>
+        </div>
+        
+        <div class="flex space-x-2">
+            <button class="copy-btn btn-secondary flex-1 py-2 px-4 rounded-lg flex items-center justify-center space-x-2" data-number="${service.number}">
+                <i class="fas fa-copy"></i>
+                <span>Copy</span>
+            </button>
+            <button class="call-btn btn-primary text-white flex-1 py-2 px-4 rounded-lg flex items-center justify-center space-x-2" 
+                    data-service-name="${service.nameBengali}" data-service-number="${service.number}">
+                <i class="fas fa-phone"></i>
+                <span>Call</span>
+            </button>
+        </div>
+    `;
+    
+    return cardDiv;
+}
+
+
+// Setup event listeners
+function setupEventListeners() {
+    // Heart button clicks
+    cardsContainer.addEventListener('click', (e) => {
+        if (e.target.closest('.heart-btn')) {
+            const heartBtn = e.target.closest('.heart-btn');
+            const serviceId = parseInt(heartBtn.dataset.serviceId);
+            toggleHeart(serviceId, heartBtn);
+        }
+    });
+    
+    // Copy button clicks
+    cardsContainer.addEventListener('click', (e) => {
+        if (e.target.closest('.copy-btn')) {
+            const copyBtn = e.target.closest('.copy-btn');
+            const number = copyBtn.dataset.number;
+            copyToClipboard(number);
+        }
+    });
+    
+    // Call button clicks
+    cardsContainer.addEventListener('click', (e) => {
+        if (e.target.closest('.call-btn')) {
+            const callBtn = e.target.closest('.call-btn');
+            const serviceName = callBtn.dataset.serviceName;
+            const serviceNumber = callBtn.dataset.serviceNumber;
+            makeCall(serviceName, serviceNumber);
+        }
+    });
+    
+    // Clear history button
+    clearHistoryBtn.addEventListener('click', clearHistory);
+}
+
+// Toggle heart functionality
+
+function toggleHeart(serviceId, heartBtn) {
+
+    heartCount++;
+    updateCounters();
+}
+
+
+// Copy to clipboard functionality
+async function copyToClipboard(number) {
+    try {
+        await navigator.clipboard.writeText(number);
+        alert(`Hotline number ${number} copied to clipboard!`);
+        copyCount++;
+        updateCounters();
+    } catch (err) {
+        // Fallback for older browsers
+        const textArea = document.createElement('textarea');
+        textArea.value = number;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        alert(`Hotline number ${number} copied to clipboard!`);
+        copyCount++;
+        updateCounters();
+    }
+}
+
+//  call functionality
+function makeCall(serviceName, serviceNumber) {
+    
+    if (coinCount < 20) {
+        alert('Insufficient coins! You need at least 20 coins to make a call.');
+        return;
+    }
+    
+    // Show call alert
+    alert(`Calling ${serviceName} at ${serviceNumber}`);
+    
+    // Deduct coins
+    coinCount -= 20;
+    
+    // Add to call history
+    const currentTime = getCurrentTime();
+    const historyItem = {
+        serviceName: serviceName,
+        serviceNumber: serviceNumber,
+        time: currentTime
+    };
+    
+    callHistory.unshift(historyItem);
+    
+    // Update UI
+    updateCounters();
+    updateHistoryDisplay();
+}
+
+// Get current local time
+function getCurrentTime() {
+    const now = new Date();
+    return now.toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: true
+    });
+}
+
+// Update counters display
+function updateCounters() {
+    heartCountElement.textContent = heartCount;
+    coinCountElement.textContent = coinCount;
+    copyCountElement.textContent = copyCount;
+}
+
+// Update history display
+function updateHistoryDisplay() {
+
+    const historyList = document.getElementById('historyList');
+
+    if (callHistory.length === 0) {
+        historyList.innerHTML = '<p class="text-gray-500 text-center py-8">No calls made yet</p>';
+        return;
+    }
+    
+    historyList.innerHTML = '';
+
+
+   callHistory.forEach(item => {
+    const historyItem = document.createElement('div');
+    historyItem.className = 'flex justify-between items-center bg-gray-50 p-3 rounded-lg mb-2';
+
+    // Left: service name and number
+    const leftDiv = document.createElement('div');
+    leftDiv.innerHTML = `
+        <div class="font-medium text-gray-800 text-sm">${item.serviceName}</div>
+        <div class="text-gray-600 text-xs">${item.serviceNumber}</div>
+    `;
+
+    // Right: time
+    const rightDiv = document.createElement('div');
+    rightDiv.className = 'text-gray-500 text-xs';
+    rightDiv.textContent = item.time;
+
+    // Append left and right divs to history item
+    historyItem.appendChild(leftDiv);
+    historyItem.appendChild(rightDiv);
+
+    // Add to history list
+    historyList.appendChild(historyItem);
+});
+
+
+    
+ 
+}
+
+// Clear history functionality
+function clearHistory() {
+    callHistory = [];
+    updateHistoryDisplay();
+    alert('Call history cleared successfully!');
+}
+
+// Initialize the application when DOM is loaded
+document.addEventListener('DOMContentLoaded', init);
